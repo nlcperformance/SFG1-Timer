@@ -124,9 +124,9 @@
                     <div>
                         <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">1. Select Duration</div>
                         <div class="flex bg-zinc-900 border border-zinc-800 rounded p-1" id="tucson-duration-container">
-                            <button onclick="Tucson.setDuration(5)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black">5 Min</button>
-                            <button onclick="Tucson.setDuration(10)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">10 Min</button>
-                            <button onclick="Tucson.setDuration(15)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">15 Min</button>
+                            <button id="tucson-dur-5" onclick="Tucson.setDuration(5)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black">5 Min</button>
+                            <button id="tucson-dur-10" onclick="Tucson.setDuration(10)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">10 Min</button>
+                            <button id="tucson-dur-15" onclick="Tucson.setDuration(15)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">15 Min</button>
                         </div>
                     </div>
 
@@ -513,14 +513,12 @@
 
             setDuration: function(d) {
                 this.duration = d;
-                const buttons = document.getElementById('tucson-duration-container').children;
-                for (let b of buttons) {
-                    if (b.innerText === d + ' Min') {
-                        b.className = "tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black";
-                    } else {
-                        b.className = "tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white";
-                    }
-                }
+                const activeClass = "tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black";
+                const inactiveClass = "tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white";
+                
+                document.getElementById('tucson-dur-5').className = d === 5 ? activeClass : inactiveClass;
+                document.getElementById('tucson-dur-10').className = d === 10 ? activeClass : inactiveClass;
+                document.getElementById('tucson-dur-15').className = d === 15 ? activeClass : inactiveClass;
             },
             rollDice: function() {
                 Core.unlockAudio();
