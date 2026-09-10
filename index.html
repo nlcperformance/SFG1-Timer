@@ -1,0 +1,1009 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>NLC Performance Timer</title>
+    
+    <!-- Tailwind CSS Only -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'brand-orange': '#ff6300',
+                        'tactical-dark': '#050505',
+                        'tactical-panel': '#111111',
+                    },
+                    fontFamily: {
+                        sans: ['Oswald', 'sans-serif'],
+                        mono: ['JetBrains Mono', 'monospace'],
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700;800&family=Oswald:wght@400;600;700&display=swap');
+        
+        body {
+            background-color: #050505;
+            color: #e5e5e5;
+            overflow-x: hidden;
+            touch-action: manipulation;
+        }
+
+        html, body { overscroll-behavior-y: contain; }
+        
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes slideIn { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+        
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+        .animate-slide-in { animation: slideIn 0.5s ease-out forwards; }
+        
+        .nav-tab {
+            transition: all 0.2s ease;
+            position: relative;
+        }
+        .nav-tab::after {
+            content: '';
+            position: absolute;
+            bottom: -2px;
+            left: 0;
+            width: 100%;
+            height: 2px;
+            background-color: transparent;
+            transition: background-color 0.2s ease;
+        }
+        .nav-tab.active { color: #ff6300; }
+        .nav-tab.active::after { background-color: #ff6300; }
+        
+        .text-clip-fix { padding-right: 0.5rem; padding-left: 0.5rem; }
+    </style>
+</head>
+<body>
+    <!-- Safe CSS-only Background Element -->
+    <div class="fixed inset-0 z-0 pointer-events-none opacity-[0.03] bg-cover bg-center" style="background-image: url('banner 2.jpg');"></div>
+    <div class="fixed inset-0 bg-gradient-to-b from-tactical-dark/50 via-tactical-dark to-tactical-dark z-0 pointer-events-none"></div>
+
+    <div class="relative z-10 flex flex-col min-h-screen w-full max-w-2xl mx-auto px-4 md:px-0">
+        
+        <!-- Header Branding -->
+        <header class="pt-8 pb-4 flex flex-col items-center justify-center w-full">
+            <img src="STAMPS NLCP Logo.jpg" alt="NLC Logo" class="w-20 h-20 md:w-24 md:h-24 mb-4 rounded-full object-cover shadow-[0_0_15px_rgba(255,99,0,0.2)]">
+            <h1 class="text-4xl md:text-5xl font-black italic tracking-wide text-white mb-2 text-center leading-tight flex items-center gap-2">
+                <div>NLC <span class="text-brand-orange">PERFORMANCE</span></div>
+            </h1>
+            <div class="text-[10px] tracking-[0.4em] text-zinc-500 font-bold uppercase">Tactical Timer</div>
+        </header>
+
+        <!-- Tab Navigation -->
+        <nav class="w-full pt-4 mb-8 overflow-x-auto">
+            <div class="flex border-b border-zinc-800 pb-1 min-w-max md:min-w-0 px-2 md:px-0" id="nav-tabs">
+                <button onclick="App.switchTab('ISO')" id="tab-btn-ISO" class="nav-tab px-4 py-2 text-xs md:text-sm font-bold tracking-widest uppercase flex-1 text-center whitespace-nowrap active">EXTREME ISO</button>
+                <button onclick="App.switchTab('YOSUDA')" id="tab-btn-YOSUDA" class="nav-tab px-4 py-2 text-xs md:text-sm font-bold tracking-widest uppercase flex-1 text-center whitespace-nowrap text-zinc-500 hover:text-zinc-300">YOSUDA & TGU</button>
+                <button onclick="App.switchTab('TUCSON')" id="tab-btn-TUCSON" class="nav-tab px-4 py-2 text-xs md:text-sm font-bold tracking-widest uppercase flex-1 text-center whitespace-nowrap text-zinc-500 hover:text-zinc-300">TUCSON 15/15</button>
+                <button onclick="App.switchTab('SNATCH')" id="tab-btn-SNATCH" class="nav-tab px-4 py-2 text-xs md:text-sm font-bold tracking-widest uppercase flex-1 text-center whitespace-nowrap text-zinc-500 hover:text-zinc-300">Q&D SNATCH</button>
+                <button onclick="App.switchTab('DFW')" id="tab-btn-DFW" class="nav-tab px-4 py-2 text-xs md:text-sm font-bold tracking-widest uppercase flex-1 text-center whitespace-nowrap text-zinc-500 hover:text-zinc-300">D.F.W.</button>
+            </div>
+        </nav>
+
+        <!-- Tab Views -->
+        <main class="flex-1 w-full px-2 md:px-0 relative">
+            
+            <!-- 1. YOSUDA TAB -->
+            <div id="view-YOSUDA" class="animate-fade-in w-full pb-8 hidden">
+                <div class="w-full bg-tactical-panel border border-zinc-800 p-6 rounded-lg text-center mb-6">
+                    <div class="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Current Phase</div>
+                    <div id="yosuda-phase" class="text-6xl md:text-7xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]">READY</div>
+                    <div id="yosuda-time" class="text-8xl md:text-9xl font-mono font-bold text-white mt-4 tracking-tighter">00:00</div>
+                </div>
+
+                <div class="flex gap-4 w-full mb-8">
+                    <button id="yosuda-btn-main" onclick="Yosuda.toggle()" class="flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-brand-orange text-black hover:bg-orange-600">Commence</button>
+                    <button onclick="Yosuda.reset()" class="px-6 py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold uppercase tracking-widest hover:text-white rounded">Reset</button>
+                </div>
+
+                <div class="mx-auto bg-zinc-900/50 border border-zinc-800/50 p-4 rounded w-full max-w-sm text-center">
+                    <div class="text-[10px] uppercase font-bold tracking-widest text-brand-orange mb-3">Completed Rounds (8 Min Loops)</div>
+                    <div class="flex justify-center items-center gap-6">
+                        <button onclick="Yosuda.changeRounds(-1)" class="w-12 h-12 bg-zinc-800 text-zinc-400 rounded-full text-2xl font-black hover:text-white">-</button>
+                        <span id="yosuda-rounds" class="text-5xl font-mono font-black text-white w-16">0</span>
+                        <button onclick="Yosuda.changeRounds(1)" class="w-12 h-12 bg-zinc-800 text-zinc-400 rounded-full text-2xl font-black hover:text-white">+</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 2. TUCSON 15/15 TAB -->
+            <div id="view-TUCSON" class="animate-fade-in w-full pb-8 hidden">
+                <!-- Config State -->
+                <div id="tucson-config" class="w-full max-w-md mx-auto space-y-8 block">
+                    <div>
+                        <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">1. Select Duration</div>
+                        <div class="flex bg-zinc-900 border border-zinc-800 rounded p-1" id="tucson-duration-container">
+                            <button onclick="Tucson.setDuration(5)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black">5 Min</button>
+                            <button onclick="Tucson.setDuration(10)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">10 Min</button>
+                            <button onclick="Tucson.setDuration(15)" class="tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">15 Min</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">2. Stochastic Gateway</div>
+                        <button id="tucson-btn-roll" onclick="Tucson.rollDice()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase tracking-widest py-6 border border-zinc-700 rounded transition-all block">
+                            Roll The Dice
+                        </button>
+                        <div id="tucson-rolled-view" class="bg-brand-orange/10 border border-brand-orange/30 p-6 rounded text-center animate-slide-in hidden">
+                            <div class="text-brand-orange text-xs font-bold tracking-widest uppercase mb-2">Target Acquired</div>
+                            <div id="tucson-intensity" class="text-3xl font-black italic text-white uppercase mt-2">MEDIUM (TEST BELL)</div>
+                            <div id="tucson-dur-display" class="text-zinc-400 font-mono mt-2 uppercase tracking-wide">Executing 5 Minutes</div>
+                            <button onclick="Tucson.start()" class="mt-6 w-full py-4 bg-brand-orange text-black font-black uppercase tracking-widest hover:bg-orange-500 rounded transition-all">
+                                Commence
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active State -->
+                <div id="tucson-active" class="w-full hidden flex-col items-center">
+                    <div class="flex justify-between w-full mb-4 px-2">
+                        <div id="tucson-tracker" class="text-zinc-500 font-mono text-xs uppercase tracking-widest">Sets: 0 / 10</div>
+                        <div id="tucson-active-intensity" class="text-zinc-500 font-mono text-xs uppercase tracking-widest">MEDIUM</div>
+                    </div>
+                    
+                    <div class="w-full bg-tactical-panel border border-zinc-800 p-6 rounded-lg text-center mb-6">
+                        <div class="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Current Phase</div>
+                        <div id="tucson-phase" class="text-5xl md:text-6xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]">READY</div>
+                        <div id="tucson-time" class="text-8xl md:text-9xl font-mono font-bold text-white mt-4 tracking-tighter">00:15</div>
+                    </div>
+
+                    <div class="flex gap-4 w-full mb-10">
+                        <button id="tucson-btn-main" onclick="Tucson.toggle()" class="flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700">Pause</button>
+                        <button onclick="Tucson.reset()" class="px-6 py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold uppercase tracking-widest hover:text-white rounded">Abort</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. SNATCH TAB -->
+            <div id="view-SNATCH" class="animate-fade-in w-full pb-8 hidden">
+                <!-- Config State -->
+                <div id="snatch-config" class="w-full max-w-md mx-auto space-y-8 block">
+                    <div>
+                        <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">1. Select Timings</div>
+                        <div class="flex bg-zinc-900 border border-zinc-800 rounded p-1">
+                            <button id="snatch-proto-54" onclick="Snatch.setProtocol('5/4')" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black">5/4 Power (Every 30s)</button>
+                            <button id="snatch-proto-102" onclick="Snatch.setProtocol('10/2')" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">10/2 Mass (Every 1m)</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">2. Stochastic Gateway</div>
+                        <button id="snatch-btn-roll" onclick="Snatch.rollDice()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase tracking-widest py-6 border border-zinc-700 rounded transition-all block">
+                            Roll The Dice
+                        </button>
+                        <div id="snatch-rolled-view" class="bg-brand-orange/10 border border-brand-orange/30 p-6 rounded text-center animate-slide-in hidden">
+                            <div class="text-brand-orange text-xs font-bold tracking-widest uppercase mb-2">Target Acquired</div>
+                            <div id="snatch-intensity" class="text-4xl font-black italic text-white uppercase">HEAVY</div>
+                            <div id="snatch-series-info" class="text-zinc-400 font-mono mt-2 uppercase tracking-wide">Executing 3 Series</div>
+                            <button onclick="Snatch.start()" class="mt-6 w-full py-4 bg-brand-orange text-black font-black uppercase tracking-widest hover:bg-orange-500 rounded transition-all">
+                                Commence
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active State -->
+                <div id="snatch-active" class="w-full hidden">
+                    <div class="flex justify-between w-full mb-4 px-2">
+                        <div id="snatch-series-tracker" class="text-zinc-500 font-mono text-xs uppercase tracking-widest">Series 1 / 3</div>
+                        <div id="snatch-protocol-tracker" class="text-zinc-500 font-mono text-xs uppercase tracking-widest">5/4 Protocol</div>
+                    </div>
+                    
+                    <div class="w-full bg-tactical-panel border border-zinc-800 p-6 rounded-lg text-center mb-6">
+                        <div class="text-xs font-mono text-zinc-500 uppercase tracking-widest mb-2">Current Phase</div>
+                        <div id="snatch-phase" class="text-6xl md:text-7xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]">READY</div>
+                        <div id="snatch-time" class="text-8xl md:text-9xl font-mono font-bold text-white mt-4 tracking-tighter">00:00</div>
+                    </div>
+
+                    <div class="flex gap-4 w-full mb-8">
+                        <button id="snatch-btn-main" onclick="Snatch.toggle()" class="flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700">Pause</button>
+                        <button onclick="Snatch.reset()" class="px-6 py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold uppercase tracking-widest hover:text-white rounded">Abort</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 4. DFW TAB -->
+            <div id="view-DFW" class="animate-fade-in w-full pb-8 hidden">
+                <!-- Config State -->
+                <div id="dfw-config" class="w-full max-w-md mx-auto space-y-8 block">
+                    <div>
+                        <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">1. Select Time Domain</div>
+                        <div class="flex bg-zinc-900 border border-zinc-800 rounded p-1">
+                            <button id="dfw-dur-20" onclick="Dfw.setDuration(20)" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black">20 Min</button>
+                            <button id="dfw-dur-30" onclick="Dfw.setDuration(30)" class="flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white">30 Min</button>
+                        </div>
+                    </div>
+
+                    <div>
+                        <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">2. Stochastic Gateway</div>
+                        <button id="dfw-btn-roll" onclick="Dfw.rollDice()" class="w-full bg-zinc-800 hover:bg-zinc-700 text-white font-bold uppercase tracking-widest py-6 border border-zinc-700 rounded transition-all block">
+                            Roll The Dice
+                        </button>
+                        <div id="dfw-rolled-view" class="bg-brand-orange/10 border border-brand-orange/30 p-6 rounded text-center animate-slide-in hidden">
+                            <div class="text-brand-orange text-xs font-bold tracking-widest uppercase mb-2">Target Acquired</div>
+                            <div id="dfw-equipment" class="text-3xl font-black italic text-white uppercase mt-2">DOUBLE KB</div>
+                            <div id="dfw-intensity" class="text-xl font-bold text-zinc-400 uppercase mt-1">RPE 7 (MEDIUM)</div>
+                            <button onclick="Dfw.start()" class="mt-6 w-full py-4 bg-brand-orange text-black font-black uppercase tracking-widest hover:bg-orange-500 rounded transition-all">
+                                Commence
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Active State -->
+                <div id="dfw-active" class="w-full hidden flex-col items-center">
+                    <div class="flex justify-between w-full mb-4 px-2">
+                        <div id="dfw-active-equipment" class="text-zinc-500 font-mono text-xs uppercase tracking-widest">DOUBLE KB</div>
+                        <div id="dfw-active-intensity" class="text-zinc-500 font-mono text-xs uppercase tracking-widest">RPE 7 (MEDIUM)</div>
+                    </div>
+                    
+                    <div id="dfw-time" class="text-brand-orange font-black text-8xl md:text-9xl tracking-tighter tabular-nums drop-shadow-[0_0_20px_rgba(255,99,0,0.3)] mb-8">20:00</div>
+
+                    <div class="flex gap-4 w-full mb-10">
+                        <button id="dfw-btn-main" onclick="Dfw.toggle()" class="flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700">Pause</button>
+                        <button onclick="Dfw.reset()" class="px-6 py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold uppercase tracking-widest hover:text-white rounded">Reset</button>
+                    </div>
+
+                    <div class="w-full border-t border-zinc-800 pt-8">
+                        <div class="text-[10px] tracking-widest text-zinc-500 font-bold uppercase mb-4 text-center">Ladder Tracker (Autosaves)</div>
+                        <div class="grid grid-cols-3 gap-3 mb-6">
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-brand-orange font-bold uppercase mb-2 text-center">1 Rep<br>Ladder</span>
+                                <button onclick="Dfw.changeReps(1, 1)" id="dfw-c1" class="w-full aspect-square rounded bg-zinc-900 border border-zinc-800 hover:border-brand-orange text-3xl font-black text-white">0</button>
+                                <button onclick="Dfw.changeReps(1, -1)" class="mt-2 text-zinc-600 hover:text-zinc-400 p-2 text-xl">-</button>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-brand-orange font-bold uppercase mb-2 text-center">2 Rep<br>Ladder</span>
+                                <button onclick="Dfw.changeReps(2, 1)" id="dfw-c2" class="w-full aspect-square rounded bg-zinc-900 border border-zinc-800 hover:border-brand-orange text-3xl font-black text-white">0</button>
+                                <button onclick="Dfw.changeReps(2, -1)" class="mt-2 text-zinc-600 hover:text-zinc-400 p-2 text-xl">-</button>
+                            </div>
+                            <div class="flex flex-col items-center">
+                                <span class="text-[10px] text-brand-orange font-bold uppercase mb-2 text-center">3 Rep<br>Ladder</span>
+                                <button onclick="Dfw.changeReps(3, 1)" id="dfw-c3" class="w-full aspect-square rounded bg-zinc-900 border border-zinc-800 hover:border-brand-orange text-3xl font-black text-white">0</button>
+                                <button onclick="Dfw.changeReps(3, -1)" class="mt-2 text-zinc-600 hover:text-zinc-400 p-2 text-xl">-</button>
+                            </div>
+                        </div>
+                        <div class="bg-brand-orange/10 border border-brand-orange/30 rounded p-4 text-center">
+                            <div class="text-[10px] uppercase tracking-widest text-brand-orange font-bold mb-1">Total Reps Logged</div>
+                            <div class="text-[9px] text-zinc-500 uppercase mb-2">(Assumes 2 exercises per ladder)</div>
+                            <div id="dfw-total" class="text-4xl font-black text-white drop-shadow-md">0</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 5. EXTREME ISO TAB -->
+            <div id="view-ISO" class="animate-fade-in w-full pb-8 block">
+                <!-- Config State -->
+                <div id="iso-config" class="w-full max-w-md mx-auto space-y-6 block">
+                    <div>
+                        <div class="text-[10px] font-bold text-zinc-500 tracking-widest uppercase mb-3">Target Time</div>
+                        <div class="flex gap-2" id="iso-duration-container">
+                            <button onclick="Iso.setDuration(1)" class="iso-btn-dur flex-1 py-3 text-xs font-bold uppercase rounded border bg-zinc-900 text-zinc-500 border-zinc-800">1M</button>
+                            <button onclick="Iso.setDuration(2)" class="iso-btn-dur flex-1 py-3 text-xs font-bold uppercase rounded border bg-zinc-100 text-black border-white">2M</button>
+                            <button onclick="Iso.setDuration(3)" class="iso-btn-dur flex-1 py-3 text-xs font-bold uppercase rounded border bg-zinc-900 text-zinc-500 border-zinc-800">3M</button>
+                            <button onclick="Iso.setDuration(4)" class="iso-btn-dur flex-1 py-3 text-xs font-bold uppercase rounded border bg-zinc-900 text-zinc-500 border-zinc-800">4M</button>
+                            <button onclick="Iso.setDuration(5)" class="iso-btn-dur flex-1 py-3 text-xs font-bold uppercase rounded border bg-zinc-900 text-zinc-500 border-zinc-800">5M</button>
+                        </div>
+                    </div>
+
+                    <div class="bg-zinc-900 border-l-4 border-brand-orange p-4 rounded text-sm text-zinc-300">
+                        <strong class="text-white block mb-1">THE EXTREME ISO HOLD</strong>
+                        <p class="text-xs text-zinc-400 mb-2 italic">Primer to build extreme tendon stiffness and positional endurance.</p>
+                        <span class="text-brand-orange text-[10px] uppercase font-bold">Contraction:</span> Actively "pull" the ground or squeeze the target muscles. <strong>Do not passively hang out in the joint.</strong> Maintain maximum tension.
+                    </div>
+
+                    <button onclick="Iso.start()" class="w-full bg-brand-orange text-black font-black uppercase tracking-widest py-5 rounded hover:bg-orange-500 transition-all mt-4">
+                        Commence Hold
+                    </button>
+                </div>
+
+                <!-- Active State -->
+                <div id="iso-active" class="w-full hidden flex-col items-center">
+                    <div id="iso-time" class="text-white font-black text-8xl md:text-9xl tracking-tighter tabular-nums drop-shadow-[0_0_20px_rgba(255,255,255,0.1)] mb-10 mt-6">02:00</div>
+
+                    <div class="flex gap-4 w-full mb-10">
+                        <button id="iso-btn-main" onclick="Iso.toggle()" class="flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700">Pause</button>
+                        <button onclick="Iso.reset()" class="px-6 py-4 bg-zinc-900 border border-zinc-800 text-zinc-400 font-bold uppercase tracking-widest hover:text-white rounded">Abort</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- PURE JAVASCRIPT LOGIC -->
+    <script>
+        // --- GLOBAL UTILS ---
+        const Core = {
+            wakeLock: null,
+            formatTime: function(seconds) {
+                const s = Math.max(0, Math.floor(seconds));
+                const m = Math.floor(s / 60).toString().padStart(2, '0');
+                const sec = (s % 60).toString().padStart(2, '0');
+                return `${m}:${sec}`;
+            },
+            speak: function(text) {
+                try {
+                    if ('speechSynthesis' in window) {
+                        window.speechSynthesis.cancel();
+                        const u = new SpeechSynthesisUtterance(text);
+                        u.rate = 1.05;
+                        u.pitch = 0.9;
+                        window.speechSynthesis.speak(u);
+                    }
+                } catch(e) { console.warn(e); }
+            },
+            unlockAudio: function() {
+                try {
+                    if ('speechSynthesis' in window) {
+                        const u = new SpeechSynthesisUtterance('');
+                        u.volume = 0;
+                        window.speechSynthesis.speak(u);
+                    }
+                } catch(e) {}
+            },
+            requestWakeLock: async function() {
+                try {
+                    if ('wakeLock' in navigator) {
+                        this.wakeLock = await navigator.wakeLock.request('screen');
+                    }
+                } catch(e) { console.warn(e); }
+            },
+            releaseWakeLock: function() {
+                if (this.wakeLock) {
+                    this.wakeLock.release().catch(()=>{});
+                    this.wakeLock = null;
+                }
+            }
+        };
+
+        const App = {
+            tabs: ['ISO', 'YOSUDA', 'TUCSON', 'SNATCH', 'DFW'],
+            switchTab: function(targetTab) {
+                if ('speechSynthesis' in window) window.speechSynthesis.cancel();
+                
+                this.tabs.forEach(tab => {
+                    // Update Nav
+                    const btn = document.getElementById(`tab-btn-${tab}`);
+                    if (tab === targetTab) {
+                        btn.className = "nav-tab px-4 py-2 text-xs md:text-sm font-bold tracking-widest uppercase flex-1 text-center whitespace-nowrap active";
+                    } else {
+                        btn.className = "nav-tab px-4 py-2 text-xs md:text-sm font-bold tracking-widest uppercase flex-1 text-center whitespace-nowrap text-zinc-500 hover:text-zinc-300";
+                    }
+                    // Update View
+                    const view = document.getElementById(`view-${tab}`);
+                    if (tab === targetTab) {
+                        view.classList.remove('hidden');
+                        view.classList.add('block');
+                    } else {
+                        view.classList.add('hidden');
+                        view.classList.remove('block');
+                    }
+                });
+            }
+        };
+
+        // --- YOSUDA MODULE ---
+        const Yosuda = {
+            time: 0,
+            rounds: 0,
+            interval: null,
+            isRunning: false,
+
+            toggle: function() {
+                Core.unlockAudio();
+                if (!this.isRunning && this.time === 0) Core.speak('Commencing Yosuda protocol. Go.');
+                this.isRunning = !this.isRunning;
+                this.updateBtn();
+                
+                if (this.isRunning) {
+                    Core.requestWakeLock();
+                    this.interval = setInterval(() => {
+                        this.time++;
+                        this.tick();
+                    }, 1000);
+                } else {
+                    clearInterval(this.interval);
+                    Core.releaseWakeLock();
+                }
+            },
+            reset: function() {
+                this.isRunning = false;
+                clearInterval(this.interval);
+                this.time = 0;
+                this.rounds = 0;
+                Core.speak('Protocol reset.');
+                Core.releaseWakeLock();
+                this.updateUI();
+                this.updateBtn();
+            },
+            changeRounds: function(val) {
+                this.rounds = Math.max(0, this.rounds + val);
+                document.getElementById('yosuda-rounds').innerText = this.rounds;
+            },
+            tick: function() {
+                const loopTime = this.time % 480;
+
+                if (loopTime === 475) Core.speak("Five seconds to sprint left");
+                if (loopTime === 0) { Core.speak("Go"); this.changeRounds(1); }
+                if (loopTime === 15) Core.speak("Transition to T G U");
+                if (loopTime === 55) Core.speak("Five seconds to sprint left");
+                if (loopTime === 60) Core.speak("Go");
+                if (loopTime === 75) Core.speak("Transition to T G U");
+                if (loopTime === 105) Core.speak("Deep rest.");
+                if (loopTime === 235) Core.speak("Five seconds to sprint right");
+                if (loopTime === 240) Core.speak("Go");
+                if (loopTime === 255) Core.speak("Transition to T G U");
+                if (loopTime === 295) Core.speak("Five seconds to sprint right");
+                if (loopTime === 300) Core.speak("Go");
+                if (loopTime === 315) Core.speak("Transition to T G U");
+                if (loopTime === 345) Core.speak("Deep rest.");
+
+                this.updateUI();
+            },
+            updateUI: function() {
+                const phaseEl = document.getElementById('yosuda-phase');
+                const timeEl = document.getElementById('yosuda-time');
+                
+                if (this.time === 0 && !this.isRunning) {
+                    phaseEl.innerText = 'READY';
+                    phaseEl.className = "text-6xl md:text-7xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]";
+                    timeEl.innerText = '00:00';
+                    return;
+                }
+
+                timeEl.innerText = Core.formatTime(this.time);
+                
+                const loopTime = this.time % 480;
+                let phase = 'READY';
+                let isRest = false;
+
+                if (loopTime >= 0 && loopTime < 15) { phase = 'SPRINT (L)'; }
+                else if (loopTime >= 15 && loopTime < 45) { phase = 'TGU (L)'; }
+                else if (loopTime >= 45 && loopTime < 60) { phase = 'PREP (L)'; isRest = true; }
+                else if (loopTime >= 60 && loopTime < 75) { phase = 'SPRINT (L)'; }
+                else if (loopTime >= 75 && loopTime < 105) { phase = 'TGU (L)'; }
+                else if (loopTime >= 105 && loopTime < 240) { phase = 'COMT REST'; isRest = true; }
+                else if (loopTime >= 240 && loopTime < 255) { phase = 'SPRINT (R)'; }
+                else if (loopTime >= 255 && loopTime < 285) { phase = 'TGU (R)'; }
+                else if (loopTime >= 285 && loopTime < 300) { phase = 'PREP (R)'; isRest = true; }
+                else if (loopTime >= 300 && loopTime < 315) { phase = 'SPRINT (R)'; }
+                else if (loopTime >= 315 && loopTime < 345) { phase = 'TGU (R)'; }
+                else if (loopTime >= 345 && loopTime < 480) { phase = 'COMT REST'; isRest = true; }
+
+                phaseEl.innerText = phase;
+                if (isRest) {
+                    phaseEl.className = "text-6xl md:text-7xl font-black italic uppercase text-clip-fix overflow-visible text-zinc-500";
+                } else {
+                    phaseEl.className = "text-6xl md:text-7xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]";
+                }
+            },
+            updateBtn: function() {
+                const btn = document.getElementById('yosuda-btn-main');
+                if (this.isRunning) {
+                    btn.innerText = 'Pause';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700";
+                } else {
+                    btn.innerText = this.time > 0 ? 'Resume' : 'Commence';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-brand-orange text-black hover:bg-orange-600";
+                }
+            }
+        };
+
+        // --- TUCSON MODULE ---
+        const Tucson = {
+            duration: 5,
+            timeElapsed: 0,
+            isRunning: false,
+            interval: null,
+            intensity: null,
+            currentSet: 1,
+
+            setDuration: function(d) {
+                this.duration = d;
+                const buttons = document.getElementById('tucson-duration-container').children;
+                for (let b of buttons) {
+                    if (b.innerText === d + ' Min') {
+                        b.className = "tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black";
+                    } else {
+                        b.className = "tucson-btn-dur flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white";
+                    }
+                }
+            },
+            rollDice: function() {
+                Core.unlockAudio();
+                const roll = Math.floor(Math.random() * 6) + 1;
+                if (roll <= 2) this.intensity = 'LIGHT (SPEED)';
+                else if (roll <= 4) this.intensity = 'MEDIUM (TEST BELL)';
+                else this.intensity = 'HEAVY (FORCE)';
+
+                document.getElementById('tucson-btn-roll').classList.add('hidden');
+                document.getElementById('tucson-rolled-view').classList.remove('hidden');
+                document.getElementById('tucson-intensity').innerText = this.intensity;
+                document.getElementById('tucson-dur-display').innerText = `Executing ${this.duration} Minutes`;
+                
+                Core.speak(`Dice rolled ${roll}. Load is ${this.intensity.split(' ')[0]}.`);
+            },
+            start: function() {
+                Core.unlockAudio();
+                document.getElementById('tucson-config').classList.add('hidden');
+                document.getElementById('tucson-active').classList.remove('hidden');
+                document.getElementById('tucson-active').classList.add('flex');
+                
+                document.getElementById('tucson-active-intensity').innerText = this.intensity;
+                this.currentSet = 1;
+                this.updateUI();
+                this.toggle();
+                Core.speak(`Commencing ${this.duration} minute Tucson protocol. Work.`);
+            },
+            reset: function() {
+                this.isRunning = false;
+                clearInterval(this.interval);
+                this.timeElapsed = 0;
+                this.currentSet = 1;
+                this.intensity = null;
+                Core.releaseWakeLock();
+
+                document.getElementById('tucson-config').classList.remove('hidden');
+                document.getElementById('tucson-active').classList.add('hidden');
+                document.getElementById('tucson-active').classList.remove('flex');
+                
+                document.getElementById('tucson-btn-roll').classList.remove('hidden');
+                document.getElementById('tucson-rolled-view').classList.add('hidden');
+                this.updateUI();
+            },
+            toggle: function() {
+                this.isRunning = !this.isRunning;
+                this.updateBtn();
+                if (this.isRunning) {
+                    Core.requestWakeLock();
+                    this.interval = setInterval(() => {
+                        this.tick();
+                    }, 1000);
+                } else {
+                    clearInterval(this.interval);
+                    Core.releaseWakeLock();
+                }
+            },
+            tick: function() {
+                this.timeElapsed++;
+                const totalSecs = this.duration * 60;
+                
+                if (this.timeElapsed >= totalSecs) {
+                    this.isRunning = false;
+                    clearInterval(this.interval);
+                    this.updateBtn();
+                    this.updateUI();
+                    Core.speak("Protocol complete. Outstanding work.");
+                    return;
+                }
+
+                const loopTime = this.timeElapsed % 30;
+                
+                if (loopTime === 0) {
+                    this.currentSet++;
+                    Core.speak("Work.");
+                } else if (loopTime === 15) {
+                    Core.speak("Rest.");
+                } else if (loopTime === 10 || loopTime === 25) {
+                    Core.speak("Five seconds.");
+                }
+                
+                this.updateUI();
+            },
+            updateUI: function() {
+                const totalSecs = this.duration * 60;
+                
+                if (this.timeElapsed === 0 && !this.isRunning) {
+                    document.getElementById('tucson-phase').innerText = 'READY';
+                    document.getElementById('tucson-phase').className = "text-5xl md:text-6xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]";
+                    document.getElementById('tucson-time').innerText = '00:15';
+                    document.getElementById('tucson-tracker').innerText = `Sets: 0 / ${totalSecs / 30}`;
+                    return;
+                }
+
+                if (this.timeElapsed >= totalSecs) {
+                    document.getElementById('tucson-phase').innerText = 'COMPLETE';
+                    document.getElementById('tucson-phase').className = "text-5xl md:text-6xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]";
+                    document.getElementById('tucson-time').innerText = '00:00';
+                    return;
+                }
+
+                const loopTime = this.timeElapsed % 30;
+                const isWork = loopTime < 15;
+                const phaseTimeLeft = 15 - (loopTime % 15);
+                
+                document.getElementById('tucson-tracker').innerText = `Sets: ${this.currentSet} / ${totalSecs / 30}`;
+                
+                const phaseEl = document.getElementById('tucson-phase');
+                phaseEl.innerText = isWork ? 'WORK (SNATCH)' : 'REST (BREATHE)';
+                phaseEl.className = isWork 
+                    ? "text-4xl md:text-5xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]"
+                    : "text-4xl md:text-5xl font-black italic uppercase text-clip-fix overflow-visible text-zinc-500";
+                
+                document.getElementById('tucson-time').innerText = '00:' + phaseTimeLeft.toString().padStart(2, '0');
+            },
+            updateBtn: function() {
+                const btn = document.getElementById('tucson-btn-main');
+                if (this.isRunning) {
+                    btn.innerText = 'Pause';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700";
+                } else {
+                    btn.innerText = 'Resume';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-brand-orange text-black hover:bg-orange-600";
+                }
+            }
+        };
+
+        // --- SNATCH MODULE ---
+        const Snatch = {
+            protocol: '5/4',
+            intensity: null,
+            seriesTarget: 0,
+            currentSeries: 1,
+            time: 0,
+            isRunning: false,
+            interval: null,
+
+            setProtocol: function(val) {
+                this.protocol = val;
+                const p54 = document.getElementById('snatch-proto-54');
+                const p102 = document.getElementById('snatch-proto-102');
+                if (val === '5/4') {
+                    p54.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black";
+                    p102.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white";
+                } else {
+                    p102.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black";
+                    p54.className = "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white";
+                }
+            },
+            rollDice: function() {
+                Core.unlockAudio();
+                const roll = Math.floor(Math.random() * 6) + 1;
+                if (roll <= 2) { this.intensity = 'Light'; this.seriesTarget = 5; }
+                else if (roll <= 4) { this.intensity = 'Medium'; this.seriesTarget = 4; }
+                else { this.intensity = 'Heavy'; this.seriesTarget = 3; }
+
+                document.getElementById('snatch-btn-roll').classList.add('hidden');
+                document.getElementById('snatch-rolled-view').classList.remove('hidden');
+                document.getElementById('snatch-intensity').innerText = this.intensity;
+                document.getElementById('snatch-series-info').innerText = `Executing ${this.seriesTarget} Series`;
+                Core.speak(`Dice rolled ${roll}. Load is ${this.intensity}. Target is ${this.seriesTarget} series.`);
+            },
+            start: function() {
+                Core.unlockAudio();
+                document.getElementById('snatch-config').classList.add('hidden');
+                document.getElementById('snatch-active').classList.remove('hidden');
+                document.getElementById('snatch-protocol-tracker').innerText = `${this.protocol} Protocol`;
+                this.updateUI();
+                this.toggle();
+                Core.speak('Commencing Snatch protocol. Work.');
+            },
+            reset: function() {
+                this.isRunning = false;
+                clearInterval(this.interval);
+                this.time = 0;
+                this.currentSeries = 1;
+                this.intensity = null;
+                Core.releaseWakeLock();
+                Core.speak('System reset.');
+
+                document.getElementById('snatch-config').classList.remove('hidden');
+                document.getElementById('snatch-active').classList.add('hidden');
+                document.getElementById('snatch-btn-roll').classList.remove('hidden');
+                document.getElementById('snatch-rolled-view').classList.add('hidden');
+            },
+            toggle: function() {
+                this.isRunning = !this.isRunning;
+                this.updateBtn();
+                if (this.isRunning) {
+                    Core.requestWakeLock();
+                    this.interval = setInterval(() => {
+                        this.time++;
+                        this.tick();
+                    }, 1000);
+                } else {
+                    clearInterval(this.interval);
+                    Core.releaseWakeLock();
+                }
+            },
+            tick: function() {
+                const seriesTime = this.time % 180;
+
+                if (seriesTime === 0) {
+                    if (this.currentSeries < this.seriesTarget) {
+                        this.currentSeries++;
+                    } else {
+                        this.isRunning = false;
+                        clearInterval(this.interval);
+                        this.updateBtn();
+                        Core.speak("Protocol complete. Outstanding work.");
+                        this.updateUI();
+                        return;
+                    }
+                }
+
+                if (this.protocol === '5/4') {
+                    if (seriesTime === 175) Core.speak("Five seconds.");
+                    if (seriesTime === 0) Core.speak("Work.");
+                    if (seriesTime === 25) Core.speak("Five seconds.");
+                    if (seriesTime === 30) Core.speak("Work.");
+                    if (seriesTime === 55) Core.speak("Five seconds.");
+                    if (seriesTime === 60) Core.speak("Work.");
+                    if (seriesTime === 85) Core.speak("Five seconds.");
+                    if (seriesTime === 90) Core.speak("Work.");
+                    if (seriesTime === 120) Core.speak("Deep Rest.");
+                } else {
+                    if (seriesTime === 175) Core.speak("Five seconds.");
+                    if (seriesTime === 0) Core.speak("Work.");
+                    if (seriesTime === 55) Core.speak("Five seconds.");
+                    if (seriesTime === 60) Core.speak("Work.");
+                    if (seriesTime === 120) Core.speak("Deep Rest.");
+                }
+
+                this.updateUI();
+            },
+            updateUI: function() {
+                document.getElementById('snatch-series-tracker').innerText = `Series ${this.currentSeries} / ${this.seriesTarget}`;
+                
+                const seriesTime = this.time % 180;
+                let phase = 'READY';
+                let isRest = false;
+
+                if (this.protocol === '5/4') {
+                    if (seriesTime >= 0 && seriesTime < 15) phase = 'WORK';
+                    else if (seriesTime >= 15 && seriesTime < 30) { phase = 'PREP'; isRest = true; }
+                    else if (seriesTime >= 30 && seriesTime < 45) phase = 'WORK';
+                    else if (seriesTime >= 45 && seriesTime < 60) { phase = 'PREP'; isRest = true; }
+                    else if (seriesTime >= 60 && seriesTime < 75) phase = 'WORK';
+                    else if (seriesTime >= 75 && seriesTime < 90) { phase = 'PREP'; isRest = true; }
+                    else if (seriesTime >= 90 && seriesTime < 105) phase = 'WORK';
+                    else if (seriesTime >= 105 && seriesTime < 120) { phase = 'PREP'; isRest = true; }
+                    else { phase = 'DEEP REST'; isRest = true; }
+                } else {
+                    if (seriesTime >= 0 && seriesTime < 30) phase = 'WORK';
+                    else if (seriesTime >= 30 && seriesTime < 60) { phase = 'PREP'; isRest = true; }
+                    else if (seriesTime >= 60 && seriesTime < 90) phase = 'WORK';
+                    else if (seriesTime >= 90 && seriesTime < 120) { phase = 'PREP'; isRest = true; }
+                    else { phase = 'DEEP REST'; isRest = true; }
+                }
+
+                const phaseEl = document.getElementById('snatch-phase');
+                phaseEl.innerText = this.time === 0 && !this.isRunning ? 'READY' : phase;
+                phaseEl.className = isRest 
+                    ? "text-6xl md:text-7xl font-black italic uppercase text-clip-fix overflow-visible text-zinc-500"
+                    : "text-6xl md:text-7xl font-black italic uppercase text-clip-fix overflow-visible text-brand-orange drop-shadow-[0_0_15px_rgba(255,99,0,0.3)]";
+                
+                document.getElementById('snatch-time').innerText = Core.formatTime(180 - seriesTime);
+            },
+            updateBtn: function() {
+                const btn = document.getElementById('snatch-btn-main');
+                if (this.isRunning) {
+                    btn.innerText = 'Pause';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700";
+                } else {
+                    btn.innerText = 'Resume';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-brand-orange text-black hover:bg-orange-600";
+                }
+            }
+        };
+
+        // --- DFW MODULE ---
+        const Dfw = {
+            duration: 20,
+            timeLeft: 1200,
+            isRunning: false,
+            interval: null,
+            counts: { 1: 0, 2: 0, 3: 0 },
+            equipment: null,
+            intensity: null,
+
+            setDuration: function(d) {
+                this.duration = d;
+                this.timeLeft = d * 60;
+                document.getElementById('dfw-dur-20').className = d === 20 ? "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black" : "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white";
+                document.getElementById('dfw-dur-30').className = d === 30 ? "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded bg-brand-orange text-black" : "flex-1 py-3 text-xs font-bold uppercase tracking-wider rounded text-zinc-400 hover:text-white";
+            },
+            rollDice: function() {
+                Core.unlockAudio();
+                const rollEquip = Math.random() > 0.5 ? 'Single KB' : 'Double KB';
+                const rollInt = Math.floor(Math.random() * 6) + 1;
+                
+                let intStr = '';
+                if (rollInt <= 2) intStr = 'RPE 5 (Light)';
+                else if (rollInt <= 4) intStr = 'RPE 7 (Medium)';
+                else intStr = 'RPE 8 (Heavy)';
+
+                this.equipment = rollEquip;
+                this.intensity = intStr;
+
+                document.getElementById('dfw-btn-roll').classList.add('hidden');
+                document.getElementById('dfw-rolled-view').classList.remove('hidden');
+                document.getElementById('dfw-equipment').innerText = this.equipment;
+                document.getElementById('dfw-intensity').innerText = this.intensity;
+                
+                Core.speak(`Dice rolled. ${this.equipment}. ${this.intensity}.`);
+            },
+            start: function() {
+                Core.unlockAudio();
+                document.getElementById('dfw-config').classList.add('hidden');
+                document.getElementById('dfw-active').classList.remove('hidden');
+                document.getElementById('dfw-active').classList.add('flex');
+                
+                document.getElementById('dfw-active-equipment').innerText = this.equipment;
+                document.getElementById('dfw-active-intensity').innerText = this.intensity;
+                
+                this.updateUI();
+                this.toggle();
+                Core.speak(`Commencing ${this.duration} minute DFW clock. Go.`);
+            },
+            reset: function() {
+                this.isRunning = false;
+                clearInterval(this.interval);
+                this.timeLeft = this.duration * 60;
+                this.counts = { 1: 0, 2: 0, 3: 0 };
+                this.equipment = null;
+                this.intensity = null;
+                this.updateCounters();
+                Core.releaseWakeLock();
+
+                document.getElementById('dfw-config').classList.remove('hidden');
+                document.getElementById('dfw-active').classList.add('hidden');
+                document.getElementById('dfw-active').classList.remove('flex');
+                
+                document.getElementById('dfw-btn-roll').classList.remove('hidden');
+                document.getElementById('dfw-rolled-view').classList.add('hidden');
+            },
+            toggle: function() {
+                this.isRunning = !this.isRunning;
+                this.updateBtn();
+                if (this.isRunning) {
+                    Core.requestWakeLock();
+                    this.interval = setInterval(() => {
+                        this.timeLeft--;
+                        this.tick();
+                    }, 1000);
+                } else {
+                    clearInterval(this.interval);
+                    Core.releaseWakeLock();
+                }
+            },
+            tick: function() {
+                if (this.timeLeft === 300) Core.speak("Five minutes remaining. Push the pace.");
+                if (this.timeLeft <= 0) {
+                    this.timeLeft = 0;
+                    this.isRunning = false;
+                    clearInterval(this.interval);
+                    this.updateBtn();
+                    Core.speak("Time limit reached. Good work.");
+                }
+                this.updateUI();
+            },
+            changeReps: function(repType, val) {
+                this.counts[repType] = Math.max(0, this.counts[repType] + val);
+                this.updateCounters();
+            },
+            updateCounters: function() {
+                document.getElementById('dfw-c1').innerText = this.counts[1];
+                document.getElementById('dfw-c2').innerText = this.counts[2];
+                document.getElementById('dfw-c3').innerText = this.counts[3];
+                // Calculate total reps assuming 2 exercises per ladder (Clean + Press/Squat)
+                document.getElementById('dfw-total').innerText = (this.counts[1] * 2) + (this.counts[2] * 4) + (this.counts[3] * 6);
+            },
+            updateUI: function() {
+                document.getElementById('dfw-time').innerText = Core.formatTime(this.timeLeft);
+            },
+            updateBtn: function() {
+                const btn = document.getElementById('dfw-btn-main');
+                if (this.isRunning) {
+                    btn.innerText = 'Pause';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700";
+                } else {
+                    btn.innerText = 'Resume';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-brand-orange text-black hover:bg-orange-600";
+                }
+            }
+        };
+
+        // --- EXTREME ISO MODULE ---
+        const Iso = {
+            duration: 2,
+            timeLeft: 120,
+            isRunning: false,
+            interval: null,
+
+            setDuration: function(d) {
+                this.duration = d;
+                this.timeLeft = d * 60;
+                const buttons = document.getElementById('iso-duration-container').children;
+                for (let b of buttons) {
+                    if (b.innerText === d + 'M') {
+                        b.className = "iso-btn-dur flex-1 py-3 text-xs font-bold uppercase rounded border bg-zinc-100 text-black border-white";
+                    } else {
+                        b.className = "iso-btn-dur flex-1 py-3 text-xs font-bold uppercase rounded border bg-zinc-900 text-zinc-500 border-zinc-800";
+                    }
+                }
+            },
+            start: function() {
+                Core.unlockAudio();
+                document.getElementById('iso-config').classList.add('hidden');
+                document.getElementById('iso-active').classList.remove('hidden');
+                document.getElementById('iso-active').classList.add('flex');
+                this.updateUI();
+                this.toggle();
+                Core.speak(`Get set. ${this.duration} minute hold begins now.`);
+            },
+            reset: function() {
+                this.isRunning = false;
+                clearInterval(this.interval);
+                this.timeLeft = this.duration * 60;
+                Core.releaseWakeLock();
+                
+                document.getElementById('iso-config').classList.remove('hidden');
+                document.getElementById('iso-active').classList.add('hidden');
+                document.getElementById('iso-active').classList.remove('flex');
+            },
+            toggle: function() {
+                this.isRunning = !this.isRunning;
+                this.updateBtn();
+                if (this.isRunning) {
+                    Core.requestWakeLock();
+                    this.interval = setInterval(() => {
+                        this.timeLeft--;
+                        this.tick();
+                    }, 1000);
+                } else {
+                    clearInterval(this.interval);
+                    Core.releaseWakeLock();
+                }
+            },
+            tick: function() {
+                const totalSecs = this.duration * 60;
+                if (this.timeLeft === totalSecs / 2) Core.speak("Halfway there. Maintain active tension.");
+                if (this.timeLeft === 30) Core.speak("Thirty seconds. Do not break.");
+                if (this.timeLeft === 10) Core.speak("Ten seconds.");
+                if (this.timeLeft === 5) Core.speak("Five");
+                if (this.timeLeft === 4) Core.speak("Four");
+                if (this.timeLeft === 3) Core.speak("Three");
+                if (this.timeLeft === 2) Core.speak("Two");
+                if (this.timeLeft === 1) Core.speak("One");
+                
+                if (this.timeLeft <= 0) {
+                    this.timeLeft = 0;
+                    this.isRunning = false;
+                    clearInterval(this.interval);
+                    this.updateBtn();
+                    Core.speak("Hold complete. Slowly release.");
+                }
+                this.updateUI();
+            },
+            updateUI: function() {
+                document.getElementById('iso-time').innerText = Core.formatTime(this.timeLeft);
+            },
+            updateBtn: function() {
+                const btn = document.getElementById('iso-btn-main');
+                if (this.isRunning) {
+                    btn.innerText = 'Pause';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-zinc-800 text-brand-orange border border-zinc-700";
+                } else {
+                    btn.innerText = 'Resume';
+                    btn.className = "flex-1 py-4 font-bold uppercase tracking-widest rounded transition-all bg-brand-orange text-black hover:bg-orange-600";
+                }
+            }
+        };
+
+    </script>
+</body>
+</html>
